@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>不可能三角生成器</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #app {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+
+    #controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input-group label {
+      min-width: 100px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    button {
+      flex: 1;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #generate-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    #export-btn {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+
+    #svg-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .venn-circle {
+      stroke: #333;
+      stroke-width: 2.5;
+      mix-blend-mode: multiply;
+      transition: all 0.3s;
+    }
+
+    .venn-circle:hover {
+      stroke-width: 3.5;
+    }
+
+    .core-label {
+      font-size: 18px;
+      font-weight: bold;
+      fill: #1a1a1a;
+      text-anchor: middle;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+    }
+
+    .core-label:hover {
+      font-size: 20px;
+      fill: #667eea;
+    }
+
+    .intersection-label {
+      font-size: 13px;
+      fill: #555;
+      text-anchor: middle;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .intersection-label:hover {
+      fill: #667eea;
+      font-weight: bold;
+    }
+
+    .intersection-label.empty {
+      fill: #999;
+      font-style: italic;
+      font-size: 12px;
+    }
+
+    .intersection-arrow {
+      stroke: #666;
+      stroke-width: 2;
+      stroke-dasharray: 5,3;
+      marker-end: url(#arrowhead);
+    }
+
+    .hint {
+      text-align: center;
+      margin-top: 20px;
+      color: #888;
+      font-size: 14px;
+    }
+
+    @media (max-width: 600px) {
+      #app {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .input-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .input-group label {
+        min-width: auto;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1 style="margin: 0;">🔺 <span id="page-title">不可能三角生成器</span></h1>
+      <select id="language-selector" style="padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; cursor: pointer; background: white;">
+        <option value="zh-CN">🇨🇳 中文</option>
+        <option value="en">🇺🇸 English</option>
+        <option value="ja">🇯🇵 日本語</option>
+        <option value="ko">🇰🇷 한국어</option>
+        <option value="es">🇪🇸 Español</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="pt">🇵🇹 Português</option>
+      </select>
+    </div>
+
+    <div id="controls">
+      <div class="input-group">
+        <label id="label-core1">核心概念 1:</label>
+        <input type="text" id="core1" placeholder="例如：去中心化">
+      </div>
+      <div class="input-group">
+        <label id="label-core2">核心概念 2:</label>
+        <input type="text" id="core2" placeholder="例如：安全性">
+      </div>
+      <div class="input-group">
+        <label id="label-core3">核心概念 3:</label>
+        <input type="text" id="core3" placeholder="例如：可扩展性">
+      </div>
+
+      <div class="button-group">
+        <button id="generate-btn" onclick="generate()"><span id="btn-generate">生成三角图</span></button>
+        <button id="export-btn" onclick="exportImage()"><span id="btn-export">导出为图片</span></button>
+      </div>
+    </div>
+
+    <div id="svg-container">
+      <svg id="venn-diagram" width="600" height="600" viewBox="0 0 600 600">
+        <!-- 定义渐变 -->
+        <defs>
+          <!-- 箭头标记 -->
+          <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 10 3, 0 6" fill="#666" />
+          </marker>
+
+          <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:rgb(255,99,71);stop-opacity:0.6" />
+            <stop offset="100%" style="stop-color:rgb(255,150,100);stop-opacity:0.6" />
+          </linearGradient>
+          <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:rgb(99,71,255);stop-opacity:0.6" />
+            <stop offset="100%" style="stop-color:rgb(150,100,255);stop-opacity:0.6" />
+          </linearGradient>
+          <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:rgb(71,255,99);stop-opacity:0.6" />
+            <stop offset="100%" style="stop-color:rgb(100,255,150);stop-opacity:0.6" />
+          </linearGradient>
+        </defs>
+
+        <!-- 三个圆圈 -->
+        <circle id="circle1" class="venn-circle" fill="url(#grad1)"/>
+        <circle id="circle2" class="venn-circle" fill="url(#grad2)"/>
+        <circle id="circle3" class="venn-circle" fill="url(#grad3)"/>
+
+        <!-- 箭头线条 -->
+        <line id="arrow-0-1" class="intersection-arrow"/>
+        <line id="arrow-1-2" class="intersection-arrow"/>
+        <line id="arrow-0-2" class="intersection-arrow"/>
+
+        <!-- 核心标签 -->
+        <text id="label1" class="core-label"></text>
+        <text id="label2" class="core-label"></text>
+        <text id="label3" class="core-label"></text>
+
+        <!-- 交集标签（外部） -->
+        <text id="inter-0-1" class="intersection-label"></text>
+        <text id="inter-1-2" class="intersection-label"></text>
+        <text id="inter-0-2" class="intersection-label"></text>
+      </svg>
+    </div>
+
+    <p class="hint" id="hint-text">💡 提示：点击核心概念或交集标签（带箭头的文字）可编辑内容</p>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    // ========== 国际化配置 ==========
+    const translations = {
+      'zh-CN': {
+        title: '不可能三角生成器',
+        labelCore1: '核心概念 1:',
+        labelCore2: '核心概念 2:',
+        labelCore3: '核心概念 3:',
+        placeholderCore1: '例如：去中心化',
+        placeholderCore2: '例如：安全性',
+        placeholderCore3: '例如：可扩展性',
+        btnGenerate: '生成三角图',
+        btnExport: '导出为图片',
+        hint: '💡 提示：点击核心概念或交集标签（带箭头的文字）可编辑内容',
+        defaultCore1: '去中心化',
+        defaultCore2: '安全性',
+        defaultCore3: '可扩展性',
+        defaultConcept: '概念',
+        promptEditCore: '编辑核心概念:',
+        promptEditInter: '编辑交集描述:',
+        defaultInter01: '比特币',
+        defaultInter12: '联盟链',
+        defaultInter02: 'DAG网络'
+      },
+      'en': {
+        title: 'Impossible Triangle Generator',
+        labelCore1: 'Core Concept 1:',
+        labelCore2: 'Core Concept 2:',
+        labelCore3: 'Core Concept 3:',
+        placeholderCore1: 'e.g., Decentralization',
+        placeholderCore2: 'e.g., Security',
+        placeholderCore3: 'e.g., Scalability',
+        btnGenerate: 'Generate Triangle',
+        btnExport: 'Export as Image',
+        hint: '💡 Tip: Click on core concepts or intersection labels (with arrows) to edit',
+        defaultCore1: 'Decentralization',
+        defaultCore2: 'Security',
+        defaultCore3: 'Scalability',
+        defaultConcept: 'Concept',
+        promptEditCore: 'Edit core concept:',
+        promptEditInter: 'Edit intersection description:',
+        defaultInter01: 'Bitcoin',
+        defaultInter12: 'Consortium Chain',
+        defaultInter02: 'DAG Network'
+      },
+      'ja': {
+        title: '不可能三角形ジェネレーター',
+        labelCore1: 'コア概念 1:',
+        labelCore2: 'コア概念 2:',
+        labelCore3: 'コア概念 3:',
+        placeholderCore1: '例：分散化',
+        placeholderCore2: '例：セキュリティ',
+        placeholderCore3: '例：スケーラビリティ',
+        btnGenerate: '三角形を生成',
+        btnExport: '画像としてエクスポート',
+        hint: '💡 ヒント：コア概念または交差ラベル（矢印付き）をクリックして編集',
+        defaultCore1: '分散化',
+        defaultCore2: 'セキュリティ',
+        defaultCore3: 'スケーラビリティ',
+        defaultConcept: '概念',
+        promptEditCore: 'コア概念を編集:',
+        promptEditInter: '交差説明を編集:',
+        defaultInter01: 'ビットコイン',
+        defaultInter12: 'コンソーシアムチェーン',
+        defaultInter02: 'DAGネットワーク'
+      },
+      'ko': {
+        title: '불가능한 삼각형 생성기',
+        labelCore1: '핵심 개념 1:',
+        labelCore2: '핵심 개념 2:',
+        labelCore3: '핵심 개념 3:',
+        placeholderCore1: '예: 탈중앙화',
+        placeholderCore2: '예: 보안',
+        placeholderCore3: '예: 확장성',
+        btnGenerate: '삼각형 생성',
+        btnExport: '이미지로 내보내기',
+        hint: '💡 팁: 핵심 개념 또는 교차 라벨(화살표 포함)을 클릭하여 편집',
+        defaultCore1: '탈중앙화',
+        defaultCore2: '보안',
+        defaultCore3: '확장성',
+        defaultConcept: '개념',
+        promptEditCore: '핵심 개념 편집:',
+        promptEditInter: '교차 설명 편집:',
+        defaultInter01: '비트코인',
+        defaultInter12: '컨소시엄 체인',
+        defaultInter02: 'DAG 네트워크'
+      },
+      'es': {
+        title: 'Generador de Triángulo Imposible',
+        labelCore1: 'Concepto Central 1:',
+        labelCore2: 'Concepto Central 2:',
+        labelCore3: 'Concepto Central 3:',
+        placeholderCore1: 'ej., Descentralización',
+        placeholderCore2: 'ej., Seguridad',
+        placeholderCore3: 'ej., Escalabilidad',
+        btnGenerate: 'Generar Triángulo',
+        btnExport: 'Exportar como Imagen',
+        hint: '💡 Consejo: Haz clic en conceptos centrales o etiquetas de intersección (con flechas) para editar',
+        defaultCore1: 'Descentralización',
+        defaultCore2: 'Seguridad',
+        defaultCore3: 'Escalabilidad',
+        defaultConcept: 'Concepto',
+        promptEditCore: 'Editar concepto central:',
+        promptEditInter: 'Editar descripción de intersección:',
+        defaultInter01: 'Bitcoin',
+        defaultInter12: 'Cadena de Consorcio',
+        defaultInter02: 'Red DAG'
+      },
+      'fr': {
+        title: 'Générateur de Triangle Impossible',
+        labelCore1: 'Concept Central 1:',
+        labelCore2: 'Concept Central 2:',
+        labelCore3: 'Concept Central 3:',
+        placeholderCore1: 'ex., Décentralisation',
+        placeholderCore2: 'ex., Sécurité',
+        placeholderCore3: 'ex., Évolutivité',
+        btnGenerate: 'Générer le Triangle',
+        btnExport: 'Exporter en Image',
+        hint: '💡 Astuce: Cliquez sur les concepts centraux ou les étiquettes d\'intersection (avec flèches) pour éditer',
+        defaultCore1: 'Décentralisation',
+        defaultCore2: 'Sécurité',
+        defaultCore3: 'Évolutivité',
+        defaultConcept: 'Concept',
+        promptEditCore: 'Modifier le concept central:',
+        promptEditInter: 'Modifier la description de l\'intersection:',
+        defaultInter01: 'Bitcoin',
+        defaultInter12: 'Chaîne de Consortium',
+        defaultInter02: 'Réseau DAG'
+      },
+      'de': {
+        title: 'Unmögliches Dreieck Generator',
+        labelCore1: 'Kernkonzept 1:',
+        labelCore2: 'Kernkonzept 2:',
+        labelCore3: 'Kernkonzept 3:',
+        placeholderCore1: 'z.B. Dezentralisierung',
+        placeholderCore2: 'z.B. Sicherheit',
+        placeholderCore3: 'z.B. Skalierbarkeit',
+        btnGenerate: 'Dreieck Generieren',
+        btnExport: 'Als Bild Exportieren',
+        hint: '💡 Tipp: Klicken Sie auf Kernkonzepte oder Schnittstellen-Labels (mit Pfeilen) zum Bearbeiten',
+        defaultCore1: 'Dezentralisierung',
+        defaultCore2: 'Sicherheit',
+        defaultCore3: 'Skalierbarkeit',
+        defaultConcept: 'Konzept',
+        promptEditCore: 'Kernkonzept bearbeiten:',
+        promptEditInter: 'Schnittstellenbeschreibung bearbeiten:',
+        defaultInter01: 'Bitcoin',
+        defaultInter12: 'Konsortium-Chain',
+        defaultInter02: 'DAG-Netzwerk'
+      },
+      'ru': {
+        title: 'Генератор Невозможного Треугольника',
+        labelCore1: 'Ключевая Концепция 1:',
+        labelCore2: 'Ключевая Концепция 2:',
+        labelCore3: 'Ключевая Концепция 3:',
+        placeholderCore1: 'напр., Децентрализация',
+        placeholderCore2: 'напр., Безопасность',
+        placeholderCore3: 'напр., Масштабируемость',
+        btnGenerate: 'Создать Треугольник',
+        btnExport: 'Экспорт в Изображение',
+        hint: '💡 Совет: Нажмите на ключевые концепции или метки пересечений (со стрелками) для редактирования',
+        defaultCore1: 'Децентрализация',
+        defaultCore2: 'Безопасность',
+        defaultCore3: 'Масштабируемость',
+        defaultConcept: 'Концепция',
+        promptEditCore: 'Редактировать ключевую концепцию:',
+        promptEditInter: 'Редактировать описание пересечения:',
+        defaultInter01: 'Биткойн',
+        defaultInter12: 'Консорциум-цепь',
+        defaultInter02: 'DAG-сеть'
+      },
+      'pt': {
+        title: 'Gerador de Triângulo Impossível',
+        labelCore1: 'Conceito Central 1:',
+        labelCore2: 'Conceito Central 2:',
+        labelCore3: 'Conceito Central 3:',
+        placeholderCore1: 'ex., Descentralização',
+        placeholderCore2: 'ex., Segurança',
+        placeholderCore3: 'ex., Escalabilidade',
+        btnGenerate: 'Gerar Triângulo',
+        btnExport: 'Exportar como Imagem',
+        hint: '💡 Dica: Clique nos conceitos centrais ou rótulos de interseção (com setas) para editar',
+        defaultCore1: 'Descentralização',
+        defaultCore2: 'Segurança',
+        defaultCore3: 'Escalabilidade',
+        defaultConcept: 'Concepto',
+        promptEditCore: 'Editar conceito central:',
+        promptEditInter: 'Editar descrição de interseção:',
+        defaultInter01: 'Bitcoin',
+        defaultInter12: 'Cadeia de Consórcio',
+        defaultInter02: 'Rede DAG'
+      }
+    };
+
+    // 当前语言（默认英文，后续会检测）
+    let currentLanguage = 'en';
+
+    // 检测浏览器语言
+    function detectLanguage() {
+      // 优先使用 localStorage 保存的语言
+      const savedLang = localStorage.getItem('preferredLanguage');
+      if (savedLang && translations[savedLang]) {
+        return savedLang;
+      }
+
+      // 检测浏览器语言
+      const browserLang = navigator.language || navigator.userLanguage;
+
+      // 精确匹配（如 zh-CN）
+      if (translations[browserLang]) {
+        return browserLang;
+      }
+
+      // 模糊匹配（如 zh 匹配 zh-CN）
+      const langPrefix = browserLang.split('-')[0];
+      for (const key in translations) {
+        if (key.startsWith(langPrefix)) {
+          return key;
+        }
+      }
+
+      // 回退到英文
+      return 'en';
+    }
+
+    // 切换语言
+    function switchLanguage(lang) {
+      if (!translations[lang]) {
+        lang = 'en'; // 回退到英文
+      }
+
+      currentLanguage = lang;
+      localStorage.setItem('preferredLanguage', lang);
+
+      // 更新界面
+      const t = translations[lang];
+      document.getElementById('page-title').textContent = t.title;
+      document.getElementById('label-core1').textContent = t.labelCore1;
+      document.getElementById('label-core2').textContent = t.labelCore2;
+      document.getElementById('label-core3').textContent = t.labelCore3;
+      document.getElementById('core1').placeholder = t.placeholderCore1;
+      document.getElementById('core2').placeholder = t.placeholderCore2;
+      document.getElementById('core3').placeholder = t.placeholderCore3;
+      document.getElementById('btn-generate').textContent = t.btnGenerate;
+      document.getElementById('btn-export').textContent = t.btnExport;
+      document.getElementById('hint-text').textContent = t.hint;
+      document.getElementById('language-selector').value = lang;
+
+      // 更新 HTML lang 属性
+      document.documentElement.lang = lang;
+    }
+
+    // ========== 原有代码 ==========
+    // 数据结构 - Linus 式简洁
+    const state = {
+      cores: ['', '', ''],
+      intersections: ['', '', '']
+    };
+
+    // 计算圆圈位置 - 数学驱动，零特殊情况
+    function calculatePositions() {
+      const centerX = 300;
+      const centerY = 300;
+      const radius = 120;
+      const distance = 125; // 圆心距中心的距离（调整为 125，消除三圆共交）
+
+      // 三个角度：90°（顶部）, 210°（左下）, 330°（右下）
+      const angles = [90, 210, 330];
+
+      return angles.map((angle, i) => {
+        const radian = (angle * Math.PI) / 180;
+        const cx = centerX + distance * Math.cos(radian);
+        const cy = centerY - distance * Math.sin(radian);
+        return {
+          cx: cx,
+          cy: cy,
+          labelX: cx, // 标签放在圆心
+          labelY: cy  // 标签放在圆心
+        };
+      });
+    }
+
+    // 计算两圆交点 - 数学直接解
+    function getCircleIntersections(x1, y1, r1, x2, y2, r2) {
+      const d = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+      if (d > r1 + r2 || d < Math.abs(r1 - r2)) return null; // 无交点
+
+      const a = (r1 ** 2 - r2 ** 2 + d ** 2) / (2 * d);
+      const h = Math.sqrt(r1 ** 2 - a ** 2);
+
+      const px = x1 + a * (x2 - x1) / d;
+      const py = y1 + a * (y2 - y1) / d;
+
+      const offsetX = h * (y2 - y1) / d;
+      const offsetY = h * (x2 - x1) / d;
+
+      return {
+        p1: { x: px + offsetX, y: py - offsetY },
+        p2: { x: px - offsetX, y: py + offsetY }
+      };
+    }
+
+    // 计算交集标签位置和箭头
+    function calculateIntersectionPositions() {
+      const centerX = 300;
+      const centerY = 300;
+      const positions = calculatePositions();
+      const radius = 120;
+
+      // 计算每对圆的交点
+      const inter01 = getCircleIntersections(
+        positions[0].cx, positions[0].cy, radius,
+        positions[1].cx, positions[1].cy, radius
+      );
+      const inter12 = getCircleIntersections(
+        positions[1].cx, positions[1].cy, radius,
+        positions[2].cx, positions[2].cy, radius
+      );
+      const inter02 = getCircleIntersections(
+        positions[0].cx, positions[0].cy, radius,
+        positions[2].cx, positions[2].cy, radius
+      );
+
+      // 计算从相交区域中点向外延伸的箭头
+      const calculateArrowFromIntersection = (inter, labelOffsetY = 0) => {
+        // 两交点的中点
+        const midX = (inter.p1.x + inter.p2.x) / 2;
+        const midY = (inter.p1.y + inter.p2.y) / 2;
+
+        // 从三角形中心指向中点的方向
+        const dx = midX - centerX;
+        const dy = midY - centerY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const ndx = dx / len;
+        const ndy = dy / len;
+
+        // 先向外移动一段距离，让箭头起点离圆有距离
+        const offsetDist = 80;
+        const arrowStartX = midX + ndx * offsetDist;
+        const arrowStartY = midY + ndy * offsetDist;
+
+        // 箭头长度
+        const extendDist = 100;
+        const arrowEndX = arrowStartX + ndx * extendDist;
+        const arrowEndY = arrowStartY + ndy * extendDist;
+
+        // 标签在箭头终点外再偏移一段距离
+        const labelGap = 15;  // 标签与箭头终点的间距（缩小到15）
+        const labelX = arrowEndX + ndx * labelGap;
+        const labelY = arrowEndY + ndy * labelGap;
+
+        return {
+          arrowStart: { x: arrowStartX, y: arrowStartY },
+          arrowEnd: { x: arrowEndX, y: arrowEndY },
+          label: { x: labelX, y: labelY + labelOffsetY }
+        };
+      };
+
+      return [
+        calculateArrowFromIntersection(inter01),      // 左侧
+        calculateArrowFromIntersection(inter12, 20),  // 底部 - 标签向下偏移20px
+        calculateArrowFromIntersection(inter02)       // 右侧
+      ];
+    }
+
+    // 生成三角图 - 单一数据流
+    function generate() {
+      const t = translations[currentLanguage];
+
+      // 读取输入
+      state.cores = [
+        document.getElementById('core1').value || `${t.defaultConcept} A`,
+        document.getElementById('core2').value || `${t.defaultConcept} B`,
+        document.getElementById('core3').value || `${t.defaultConcept} C`
+      ];
+
+      const positions = calculatePositions();
+      const radius = 120;
+
+      // 绘制圆圈 - 用循环，不是 if/else
+      positions.forEach((pos, i) => {
+        const circle = document.getElementById(`circle${i + 1}`);
+        circle.setAttribute('cx', pos.cx);
+        circle.setAttribute('cy', pos.cy);
+        circle.setAttribute('r', radius);
+      });
+
+      // 绘制核心标签
+      positions.forEach((pos, i) => {
+        const label = document.getElementById(`label${i + 1}`);
+        label.setAttribute('x', pos.labelX);
+        label.setAttribute('y', pos.labelY);
+        label.textContent = state.cores[i];
+
+        // 添加点击编辑
+        label.onclick = function() {
+          editLabel(i, 'core');
+        };
+      });
+
+      // 绘制交集标签和箭头
+      const interPositions = calculateIntersectionPositions();
+      const interLabels = [t.defaultInter01, t.defaultInter12, t.defaultInter02]; // 从翻译读取默认值
+
+      interPositions.forEach((pos, i) => {
+        const labelId = i === 0 ? 'inter-0-1' : i === 1 ? 'inter-1-2' : 'inter-0-2';
+        const arrowId = i === 0 ? 'arrow-0-1' : i === 1 ? 'arrow-1-2' : 'arrow-0-2';
+        const text = state.intersections[i] || interLabels[i];
+
+        // 绘制外部标签 - 在延长线上
+        const label = document.getElementById(labelId);
+        label.setAttribute('x', pos.label.x);
+        label.setAttribute('y', pos.label.y);
+        label.textContent = text;
+
+        // 标记空状态 - 只有当文本是占位符时才标记
+        if (text === '—') {
+          label.classList.add('empty');
+        } else {
+          label.classList.remove('empty');
+        }
+
+        // 绘制箭头 - 完全在延长线上
+        const arrow = document.getElementById(arrowId);
+        arrow.setAttribute('x1', pos.arrowStart.x);
+        arrow.setAttribute('y1', pos.arrowStart.y);
+        arrow.setAttribute('x2', pos.arrowEnd.x);
+        arrow.setAttribute('y2', pos.arrowEnd.y);
+
+        // 添加点击编辑
+        label.onclick = function() {
+          editLabel(i, 'intersection');
+        };
+      });
+    }
+
+    // 编辑标签 - 最简交互
+    function editLabel(index, type) {
+      const t = translations[currentLanguage];
+      const current = type === 'core' ? state.cores[index] : state.intersections[index];
+      const prompt_text = type === 'core' ? t.promptEditCore : t.promptEditInter;
+
+      const newText = prompt(prompt_text, current === '—' ? '' : current);
+
+      if (newText !== null) {
+        if (type === 'core') {
+          if (newText.trim() === '') return; // 核心概念不能为空
+          state.cores[index] = newText;
+          document.getElementById(`label${index + 1}`).textContent = newText;
+          // 同步更新输入框
+          document.getElementById(`core${index + 1}`).value = newText;
+        } else {
+          // 更新交集标签
+          state.intersections[index] = newText.trim();
+          const labelId = index === 0 ? 'inter-0-1' : index === 1 ? 'inter-1-2' : 'inter-0-2';
+          const label = document.getElementById(labelId);
+
+          if (newText.trim() === '') {
+            label.textContent = '—';
+            label.classList.add('empty');
+          } else {
+            label.textContent = newText.trim();
+            label.classList.remove('empty');
+          }
+        }
+      }
+    }
+
+    // 导出图片 - 实用主义
+    function exportImage() {
+      const container = document.getElementById('svg-container');
+
+      html2canvas(container, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false
+      }).then(canvas => {
+        canvas.toBlob(blob => {
+          // 下载文件
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `impossible-triangle-${Date.now()}.png`;
+          link.click();
+          URL.revokeObjectURL(url);
+
+          // 复制到剪贴板
+          if (navigator.clipboard && ClipboardItem) {
+            navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+          }
+        });
+      });
+    }
+
+    // 页面加载时生成默认示例
+    window.addEventListener('load', function() {
+      // 初始化语言
+      currentLanguage = detectLanguage();
+      switchLanguage(currentLanguage);
+
+      // 使用当前语言的默认值
+      const t = translations[currentLanguage];
+      document.getElementById('core1').value = t.defaultCore1;
+      document.getElementById('core2').value = t.defaultCore2;
+      document.getElementById('core3').value = t.defaultCore3;
+
+      generate();
+    });
+
+    // 语言选择器事件监听
+    document.getElementById('language-selector').addEventListener('change', function(e) {
+      switchLanguage(e.target.value);
+
+      // 如果输入框还是默认值，切换到新语言的默认值
+      const oldT = translations[currentLanguage === e.target.value ? currentLanguage : Object.keys(translations).find(k => k !== e.target.value)];
+      const newT = translations[e.target.value];
+
+      // 检查是否是默认值，如果是则更新
+      const core1 = document.getElementById('core1').value;
+      const core2 = document.getElementById('core2').value;
+      const core3 = document.getElementById('core3').value;
+
+      // 简化逻辑：只在输入框为空或为任何语言的默认值时更新
+      const isDefault1 = !core1 || Object.values(translations).some(t => t.defaultCore1 === core1);
+      const isDefault2 = !core2 || Object.values(translations).some(t => t.defaultCore2 === core2);
+      const isDefault3 = !core3 || Object.values(translations).some(t => t.defaultCore3 === core3);
+
+      if (isDefault1) document.getElementById('core1').value = newT.defaultCore1;
+      if (isDefault2) document.getElementById('core2').value = newT.defaultCore2;
+      if (isDefault3) document.getElementById('core3').value = newT.defaultCore3;
+
+      generate();
+    });
+
+    // 回车键快速生成
+    document.querySelectorAll('input[type="text"]').forEach(input => {
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          generate();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
